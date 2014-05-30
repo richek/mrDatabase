@@ -1,0 +1,50 @@
+{State:'Alabama', Capital:'Montgomery'}
+{State:'Alaska', Capital:'Juneau'}
+{State:'Arizona', Capital:'Phoenix'}
+{State:'Arkansas', Capital:'Little Rock'}
+{State:'California', Capital:'Sacramento'}
+{State:'Colorado', Capital:'Denver'}
+{State:'Connecticut', Capital:'Hartford'}
+{State:'Delaware', Capital:'Dover'}
+{State:'Florida', Capital:'Tallahassee'}
+{State:'Georgia', Capital:'Atlanta'}
+{State:'Hawaii', Capital:'Honolulu'}
+{State:'Idaho', Capital:'Boise'}
+{State:'Illinois', Capital:'Springfield'}
+{State:'Indiana', Capital:'Indianapolis'}
+{State:'Iowa', Capital:'Des Moines'}
+{State:'Kansas', Capital:'Topeka'}
+{State:'Kentucky', Capital:'Frankfort'}
+{State:'Louisiana', Capital:'Baton Rouge'}
+{State:'Maine', Capital:'Augusta'}
+{State:'Maryland', Capital:'Annapolis'}
+{State:'Massachusetts', Capital:'Boston'}
+{State:'Michigan', Capital:'Lansing'}
+{State:'Minnesota', Capital:'Saint Paul'}
+{State:'Mississippi', Capital:'Jackson'}
+{State:'Missouri', Capital:'Jefferson City'}
+{State:'Montana', Capital:'Helena'}
+{State:'Nebraska', Capital:'Lincoln'}
+{State:'Nevada', Capital:'Carson City'}
+{State:'New Hampshire', Capital:'Concord'}
+{State:'New Jersey', Capital:'Trenton'}
+{State:'New Mexico', Capital:'Santa Fe'}
+{State:'New York', Capital:'Albany'}
+{State:'North Carolina', Capital:'Raleigh'}
+{State:'North Dakota', Capital:'Bismarck'}
+{State:'Ohio', Capital:'Columbus'}
+{State:'Oklahoma', Capital:'Oklahoma City'}
+{State:'Oregon', Capital:'Salem'}
+{State:'Pennsylvania', Capital:'Harrisburg'}
+{State:'Rhode Island', Capital:'Providence'}
+{State:'South Carolina', Capital:'Columbia'}
+{State:'South Dakota', Capital:'Pierre'}
+{State:'Tennessee', Capital:'Nashville'}
+{State:'Texas', Capital:'Austin'}
+{State:'Utah', Capital:'Salt Lake City'}
+{State:'Vermont', Capital:'Montpelier'}
+{State:'Virginia', Capital:'Richmond'}
+{State:'Washington', Capital:'Olympia'}
+{State:'West Virginia', Capital:'Charleston'}
+{State:'Wisconsin', Capital:'Madison'}
+{State:'Wyoming', Capital:'Cheyenne'}

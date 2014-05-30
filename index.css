@@ -1,0 +1,58 @@
+body, .center {
+	text-align: center;
+	margin: auto;
+}
+.right {
+	text-align: right;
+}
+.tm {
+	font-size: 50%;
+	font-weight: normal;
+	vertical-align: super;
+}
+select {
+	font-size: 12pt;
+	font-weight: bold;
+}
+input, td {
+	font-size: 13pt;
+}
+#objects {
+	position: relative;
+	top: 30px;
+}
+.actions {
+	position: relative;
+	top: 20px;
+}
+button {
+	background: url(images/button_bg.png) repeat-x top left;
+	list-style-type: none;
+	width: 80px;
+	text-align: center;
+	vertical-align: middle;
+	border-left: 1px solid #ffffff;
+	border-right: 1px solid #cccccc;
+	border-bottom: 0px;
+	border-top: 0px;
+	margin: 0px;
+	font-family: ariel, helvetica, sans-serif;
+	font-weight: bold;
+	font-size: 12pt;
+	color: black;
+	background-color: transparent;
+	padding: 7px 8px 8px 8px;
+	text-decoration: none;
+	height: 31px;
+	position: relative;
+	top: 4px;
+}
+button:hover {
+	color: yellow;
+}
+button:active {
+	color: yellow;
+	border-left: 1px solid #cccccc;
+	border-right: 1px solid #ffffff;
+	background: url(images/button_active_bg.png) repeat-x top left;
+}
