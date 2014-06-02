@@ -151,7 +151,7 @@ If the database is read-only, "put" and "remove" are not available in either cli
 
 This command uses JSON search objects that specify criteria for retrieval. The key:value pairs in an individual search object have an AND relationship. In a JSON array of search objects, the objects have an OR relationship.
 
-Thus, assuming a database with objects containing first and last names
+Thus, assuming a database named "people" with objects containing first and last names
 
 ```bash
 	node admin get people '{firstname:john, lastname:smith}'
@@ -162,7 +162,7 @@ retrieves all objects that have both the firstname = "john" AND the lastname = "
 while
 
 ```bash
-	node admin get dbname '[{firstname:john}, {lastname:smith}]'
+	node admin get people '[{firstname:john}, {lastname:smith}]'
 ```
 
 retrieves all objects that have either the firstname = "john" OR the lastname = "smith", or both.
