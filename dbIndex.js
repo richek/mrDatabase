@@ -18,20 +18,18 @@
 		this.put = function (arg) {
 			if (Buffer.isBuffer(arg)) {
 				var buffer = arg;
-				var normbuff = buffer;
-				var normobj = buffer.slice(4).toObject();
+				arg = buffer.slice(4).toObject();
 			} else {
 				if (this.get(arg) !== null) {
 					return null;
 				}
-				normobj = normalize(arg);
-				normbuff = normobj.toBuffer();
-				buffer = new Buffer(normbuff.length + 4);
+				var argbuff = arg.toBuffer();
+				buffer = new Buffer(argbuff.length + 4);
 				buffer.writeInt32LE(0, 0);
-				normbuff.copy(buffer, 4);
+				argbuff.copy(buffer, 4);
 			}
-			Object.keys(normobj).forEach(function (key) {
-				var value = normobj[key];
+			Object.keys(arg).forEach(function (key) {
+				var value = arg[key];
 				if (typeof key === 'string') {
 					key = key.toLowerCase();
 				}
@@ -53,11 +51,11 @@
 			return buffer;
 		};
 
-		this.remove = function (unsorted) {
+		this.remove = function (arg) {
 			var removed = [];
-			var buffer;
-			var gotbuffs = this.get(unsorted);
+			var gotbuffs = this.get(arg);
 			if (gotbuffs !== null) {
+				var buffer;
 				while ((buffer = gotbuffs.shift()) !== undefined) {
 					removed.push(buffer);
 					var object = buffer.slice(4).toObject();
@@ -85,18 +83,17 @@
 			return removed;
 		};
 
-		this.get = function (unsorted) {
+		this.get = function (arg) {
 			var strings = [];
 			var buffers = [];
-			var normobj = normalize(unsorted);
-			Object.keys(normobj).forEach(function (key, index) {
+			Object.keys(arg).forEach(function (key, index) {
 				var lowerKey = typeof key === 'string' ?
 					key.toLowerCase() : key;
 				var previous = strings;
 				strings = [];
 				buffers = [];
 				if (lowerKey in db) {
-					var value = normobj[key];
+					var value = arg[key];
 					if (typeof value === 'string' && value.slice(-1) === '_') {
 						var values = [value.slice(0, -1)];
 					} else {
@@ -138,26 +135,6 @@
 			});
 			return objects;
 		};
-	}
-
-	function normalize(unsorted) {
-		var lower = {};
-		Object.keys(unsorted).forEach(function (key) {
-			var lowerKey = typeof key === 'string' ? key.toLowerCase() : key;
-			lower[lowerKey] = unsorted[key];
-		});
-		var normobj = {};
-		Object.keys(lower).sort().forEach(function (lowerKey) {
-			Object.keys(unsorted).some(function (key) {
-				if (key === lowerKey
-					|| (typeof key === 'string'
-						&& key.toLowerCase() === lowerKey)) {
-					normobj[key] = unsorted[key];
-					return true;
-				}
-			});
-		});
-		return normobj;
 	}
 
 }());

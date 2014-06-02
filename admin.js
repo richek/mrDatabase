@@ -15,22 +15,43 @@ var httpsOptions = {
 };
 
 var cmdobj = getcmd();
-if (cmdobj) {
-	if (cmdobj.cmd === 'load') {
-		load(cmdobj, function (count) {
-			showCount(count);
-			process.exit();
-		});
-	} else {
-		send(cmdobj, function (parsed) {
-			if (Array.isArray(parsed)) {
-				showCount(parsed.length);
-			}
-			process.exit();
-		});
-	}
-} else {
+if (!cmdobj) {
 	process.exit();
+}
+switch (cmdobj.cmd) {
+case 'create':
+	create(cmdobj, function () {
+		process.exit();
+	});
+	break;
+case 'import':
+	csvImport(cmdobj, function (count) {
+		showCount(count);
+		process.exit();
+	});
+	break;
+case 'export':
+	csvExport(cmdobj, function (count) {
+		showCount(count);
+		process.exit();
+	});
+	break;
+case 'dump':
+	send(cmdobj, function (parsed) {
+		if (Array.isArray(parsed)) {
+			showCount(parsed.length);
+		}
+		process.exit();
+	});
+	break;
+default:
+	send(cmdobj, function (parsed) {
+		if (Array.isArray(parsed)) {
+			showCount(parsed.length);
+		}
+		process.exit();
+	});
+	break;
 }
 
 function showCount(count) {
@@ -39,6 +60,10 @@ function showCount(count) {
 }
 
 function send(object, callback) {
+	var cmd = object.cmd;
+	if (cmd === 'export') {
+		object.cmd = 'dump';
+	}
 	var data = '';
 	var request = https.request(httpsOptions, function (response) {
 		response.on('data', function (chunk) {
@@ -46,7 +71,12 @@ function send(object, callback) {
 		});
 		response.on('end', function () {
 			var parsed = JSON.parse(data);
-			console.log(parsed);
+			if (cmd === 'dump') {
+				parsed.shift();
+			}
+			if (cmd !== 'export') {
+				console.log(parsed);
+			}
 			callback(parsed);
 		});
 	});
@@ -61,19 +91,22 @@ function getcmd() {
 	case 'put':
 	case 'remove':
 		if (cmdobj.args.length === 0) {
-			console.log('\nERROR: this command requires:', cmdobj.cmd, '<dbName>', "'<object>'");
+			console.log('\nERROR: this command requires: node admin',
+						cmdobj.cmd, '<dbName>', "'<object>'");
 			commands();
 			return null;
 		} else {
 			return cmdobj;
 		}
-	case 'load':
-		str = '[anything]';
+	case 'create':
+	case 'import':
+	case 'export':
 	case 'dump':
 		if (cmdobj.dbName) {
 			return cmdobj;
 		} else {
-			console.log('\nERROR: this command requires:',  cmdobj.cmd, '<dbName>', str);
+			console.log('\nERROR: this command requires: node admin',
+						cmdobj.cmd, '<dbName>');
 			commands();
 			return null;
 		}
@@ -93,14 +126,16 @@ function commands() {
 	str += "\n\tget <dbName> '<object>'";
 	str += "\n\tput <dbName> '<object>'";
 	str += "\n\tremove <dbName> '<object>'";
-	str += '\n\tload <dbName> [<anything>]';
+	str += '\n\tcreate <dbName>';
+	str += '\n\timport <dbName>';
+	str += '\n\texport <dbName>';
 	str += '\n\tdump <dbName>';
 	str += '\n\tlog [true | false]';
 	str += '\n\tgetInfo';
 	str += '\n\trescan';
 	str += '\n\tshutdown\n';
 	console.log("\nUsage: node admin command [<dbName>]",
-				"['<object>' | true | false | anything]");
+				"['<object>' | true | false]");
 	console.log(str);
 }
 
@@ -137,41 +172,44 @@ function getobj () {
 	return cmdobj;
 }
 
-function load(cmdobj, callback) {
-	var dbName = cmdobj.dbName;
-	var csv = cmdobj.args.length !== 0;
-	var filename = dbName + (csv ? '.csv' : '.txt');
-	try {
-		var file = fs.readFileSync(filename).toString().split('\n');
-		file.pop();
-		if (csv) {
-			var keys = fs.readFileSync(dbName + '.keys').toString().split('\n');
-			keys.pop();
-		}
-	} catch (error) {
-		console.log(error);
-		process.exit();
-	}
+function create(cmdobj, callback) {
+	send(cmdobj, function () {
+		send({cmd:'rescan'}, function () {
+			callback();
+		});
+	});
+}
 
-	require('child_process').spawn('touch', [dbName + '.mrdb']);
-	send({cmd: 'rescan'}, function () {
+function csvImport(cmdobj, callback) {
+	var dbName = cmdobj.dbName;
+	var filename = dbName + '.csv';
+	var file;
+	var keys;
+	var importCount = 0;
+	var obj = {};
+	obj.cmd = 'create';
+	obj.dbName = dbName;
+	create(obj, function () {
 		console.log();
+		try {
+			file = fs.readFileSync(filename).toString().split('\n');
+			file.pop();
+		} catch (error) {
+			console.log(error);
+			process.exit();
+		}
+		keys = file.shift().split('\t');
 		sendData();
 	});
 
-	var loadCount = 0;
 	function sendData() {
 		var line = file.shift();
 		if (line === undefined) {
-			callback(loadCount);
+			callback(importCount);
 		}
-		if (csv) {
-			var object = csvObject(line);
-		} else {
-			object = textObject(line);
-		}
+		var object = csvObject(line);
 		send(object, function () {
-			++loadCount;
+			++importCount;
 			sendData();
 		});
 	}
@@ -188,24 +226,26 @@ function load(cmdobj, callback) {
 		object.args = args;
 		return object;
 	}
+}
 
-	function textObject (line) {
-		var args = line.trim().replace(/['"]/g, '');
-		args = args.replace(/([^{}\[\]:,]+)/g, '"$1"');
-		args = args.replace(/" /g, '"');
-		args = JSON.parse(args);
-		if (typeof args === 'object' && args !== null) {
-			Object.keys(args).forEach(function (key) {
-				var number = Number(args[key]);
-				if (!isNaN(number)) {
-					args[key] = number;
-				}
+function csvExport(cmdobj, callback) {
+	var dbName = cmdobj.dbName;
+	var filename = dbName + '.csv';
+	send(cmdobj, function (objects) {
+		var keys = objects.shift().keys;
+		var file = keys.join('\t') + '\n';
+		var exportCount = 0;
+		var object;
+		while ((object = objects.shift()) !== undefined) {
+			var values = [];
+			Object.keys(object).forEach(function (key) {
+				var lowerKey = typeof key === 'string' ? key.toLowerCase() : key;
+				values[keys.indexOf(lowerKey)] = object[key];
 			});
+			file += values.join('\t') + '\n';
+			++exportCount;
 		}
-		var object = {};
-		object.cmd = 'put';
-		object.dbName = dbName;
-		object.args = args;
-		return object;
-	}
+		fs.writeFileSync(filename, file);
+		callback(exportCount);
+	});
 }

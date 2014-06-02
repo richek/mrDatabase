@@ -2,6 +2,7 @@
 'use strict';
 
 var crypto = require('crypto');
+var exec = require('child_process').exec;
 var fs = require('fs');
 var https = require('https');
 var url = require('url');
@@ -123,6 +124,11 @@ function execute(object, callback) {
 	case 'remove':
 		callback(remove(dbName, args));
 		break;
+	case 'create':
+		exec('touch ' + dbName + '.mrdb', function () {
+			callback('created ' + dbName);
+		});
+		break;
 	case 'dump':
 		callback(dump(dbName));
 		break;
@@ -215,5 +221,7 @@ function get(dbName, array) {
 }
 
 function dump(dbName) {
-	return dbInfo[dbName].dbIndex.dump();
+	var keys = dbInfo[dbName].dbIndex.getKeys();
+	var objects = dbInfo[dbName].dbIndex.dump();
+	return [{'keys':keys}].concat(objects);
 }

@@ -73,7 +73,7 @@ To shut down the server:
 
 ### Case and Fuzzy Match
 
-Commands, search and index keys and values are converted internally to lower case. Thus, all are functionally case insensitive. Keys and values in an object are not modified.
+Commands, search, and index keys and values are converted internally to lower case. Thus, all are functionally case insensitive. Keys and values in an object are not modified.
 
 Internally, the objects {Lastname:Smith}, {lastname:Smith}, {LASTNAME:SMITH}, and {lastname:smith} are all the same object.
 
@@ -121,15 +121,17 @@ To see usage information and a list of available commands for the admin client:
 
 This provides the following display:
 
-```
-	Usage: node admin command [<dbName>] ['<object>' | true | false | anything]
+```bash
+	Usage: node admin command [<dbName>] ['<object>' | true | false]
 
 	Commands:
 
 		get <dbName> '<object>'
 		put <dbName> '<object>'
 		remove <dbName> '<object>'
-		load <dbName> [<anything>]
+		create <dbName>
+		import <dbName>
+		export <dbName>
 		dump <dbName>
 		log [true | false]
 		getInfo
@@ -137,7 +139,7 @@ This provides the following display:
 		shutdown
 ```
 
-__Note:__ In the usage display, '\<object\>' refers to a JSON object. The single quotes are required to escape command line processing.
+__Note:__ In the usage display, "object" refers to a JSON object. The single quotes are required to escape shell command line processing.
 
 ### Commands
 
@@ -175,21 +177,27 @@ The server does not permit duplicate objects in a database. The server sends the
 
 This command does exactly the same thing as the "get" command, except it also removes each retrieved object from the database.
 
-#### load, dump, log, getInfo, rescan, shutdown
+#### create, import, export, dump, log, getInfo, rescan, shutdown
 
 These commands are available only in the admin client.
 
-#### load
+#### create
 
-This command creates a new database and loads objects into a new or existing database. It requires a dbName and an optional argument, which can be anything. Only its presence or absence is significant.
+This command creates a new empty database and executes a "rescan" command. If applied to an existing database, it has no effect except changing the database file timestamp.
 
-If the optional argument is present, the load command expects "dbName.csv" to be a tab-separated csv file, and "dbName.keys" to be a file of keys that correspond to the fields of each line of the csv file. Each line of the csv file contains the values of one object, and each line of the keys file contains one key.
+#### import
 
-If the optional argument is absent, the load command expects "dbName.txt" to be a list of JSON objects to load into the database. Each line of the text file must be a single JSON object or an array of JSON objects.
+This command executes a "create" command and imports objects into the database.
+
+The import command expects "dbName.csv" to be a tab-separated csv file. Each line of the csv file contains the tab-separated values of one object. The first line contains the tab-separated keys that correspond to the values in subsequent lines.
+
+#### export
+
+This command exports the database to a tab-separated csv file. Each line of the csv file contains the tab-separated values of one object. The first line contains the tab-separated keys that correspond to the values in subsequent lines.
 
 #### dump
 
-This command returns the entire specified database to the client. It is intended to be a development tool.
+This command returns the entire specified database to the client. It is provided as a development tool.
 
 #### log
 
@@ -209,20 +217,11 @@ This command makes the server perform an orderly shutdown.
 
 ## Examples
 
-The following four example databases are included in the download package:
-
-	* books
-	* capitals
-	* presidents
-	* songs
-
-Use the following files with the admin load command to create their respective databases:
+Use the admin "import" command with each of the following files to create and import their respective databases:
 	
 	* books.csv
-	* books.keys
-	* capitals.txt
-	* presidents.txt
+	* capitals.csv
+	* presidents.csv
 	* songs.csv
-	* songs.keys
 
 Thanks for reading me. Comments and suggestions are welcome.
