@@ -24,6 +24,8 @@ A client/server database system for JSON objects (key:value pairs).
 
 	* Single server instance manages multiple databases.
 
+	* No schema--just JSON objects with key:value pairs.
+
 	* It's FREE. See LICENSE.md.
 
 ## Usage
