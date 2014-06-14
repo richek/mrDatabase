@@ -14,7 +14,7 @@ A client/server database system for JSON objects (key:value pairs).
 
 	* Automatic deleted object space recovery.
 
-	* Client interfaces encrypted with HTTPS.
+	* Client interfaces optionally encrypted with HTTPS.
 
 	* Browser client uses Javascript + jQuery.
 
@@ -32,9 +32,13 @@ A client/server database system for JSON objects (key:value pairs).
 
 As configured in the download package, the admin client runs on the same system as the server, using "localhost" as the domain name. This means administration requires access to the system running the server.
 
+### HTTP or HTTPS
+
+By default, the download package is configured to use HTTP. This enables testing and demonstration without requiring SSL certificates. At the top of server.js and admin.js is an option object containing "http: false". Change "false" to "true" in both programs to switch to HTTPS. The Cert directory contains the certificates for HTTPS, but the root certificate being self-signed may cause problems with the browser.
+
 ### SSL Certificates
 
-For production, replace the SSL certificates in the Cert directory with certificates whose trust chain leads to a known Certificate Authority. In this case, remove Cert/root.pem, and remove the "ca" entry from the httpsOptions object in server.js and admin.js.
+For production, change the option{https: false} object at the top of server.js and admin.js to "true", and replace the SSL certificates in the Cert directory with certificates whose trust chain leads to a known Certificate Authority. In this case, remove Cert/root.pem, and remove the "ca" entry from the httpsOptions object in server.js and admin.js.
 
 The server certificate (server.pfx) must use the correct Fully Qualified Domain Name (FQDN) as the Common Name (CN), or it must appear as a Subject Alternative Name (SAN). The server certificate must also serve the "localhost" domain.
 
@@ -89,7 +93,7 @@ The fuzzy search algorithm is simple. Each and every character in the criteria v
 
 ### Browser Client
 
-Because the download package root certificate (Cert/root.pem) is self-signed, the browser most likely will complain that it cannot validate the connection. This is expected in the download package environment. It can safely be overridden.
+The download package root certificate (Cert/root.pem) is self-signed. When using HTTPS without replacing the SSL certificates, the browser most likely will complain that it cannot validate the connection. This is expected in the download package environment. It can safely be overridden.
 
 To connect the browser to the server, use this URL (pppp = server port):
 

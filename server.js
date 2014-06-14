@@ -4,20 +4,22 @@
 var crypto = require('crypto');
 var exec = require('child_process').exec;
 var fs = require('fs');
+var http = require('http');
 var https = require('https');
 var url = require('url');
 
 var dbFile = require('./dbFile');
 require('./Object');
 
+var options = {
+	port: 8888,
+	https: false
+};
+
 var httpsOptions = {
 	pfx: fs.readFileSync('./Certs/server.pfx'),
 	ca: fs.readFileSync('./Certs/root.pem'),
 	requestCert: true
-};
-
-var options = {
-	port: 8888,
 };
 
 process.on('SIGINT', function () {
@@ -53,7 +55,15 @@ dbFile.init(function (info) {
 });
 
 function createServer() {
-	https.createServer(httpsOptions, function (request, response) {
+	if (options.https) {
+		var server = https.createServer(httpsOptions, listener);
+	} else {
+		server = http.createServer(listener);
+	}
+	server.listen(options.port, function () {
+		console.log('server is listening at port:', options.port);
+	});
+	function listener(request, response) {
 		var path = url.parse(request.url).pathname;
 		if (path === '/ajax' || path === '/cli') {
 			var data = '';
@@ -62,12 +72,12 @@ function createServer() {
 			});
 			request.on('end', function() {
 				response.writeHead(200, {'Content-Type': 'text/plain'});
-				if (path === '/cli' && !request.socket.authorized) {
+				if (options.https && path === '/cli' && !request.socket.authorized) {
 					response.end(JSON.stringify(['ERROR: client is not authorized']));
 				} else {
-						execute(JSON.parse(data), function (result) {
-							response.end(JSON.stringify(result));
-						});
+					execute(JSON.parse(data), function (result) {
+						response.end(JSON.stringify(result));
+					});
 					data = '';
 				}
 			});
@@ -87,10 +97,7 @@ function createServer() {
 				response.end(file);
 			});
 		}
-		return;
-	}).listen(options.port, function () {
-		console.log('server is listening at port:', options.port);
-	});
+	}
 }
 
 var log = false;
