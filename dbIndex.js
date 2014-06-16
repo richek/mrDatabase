@@ -20,13 +20,20 @@
 				var buffer = arg;
 				arg = buffer.slice(4).toObject();
 			} else {
-				if (this.get(arg) !== null) {
-					return null;
-				}
 				var argbuff = arg.toBuffer();
 				buffer = new Buffer(argbuff.length + 4);
 				buffer.writeInt32LE(0, 0);
 				argbuff.copy(buffer, 4);
+				var buffers = this.get(arg);
+				if (buffers !== null) {
+					var strings = [];
+					buffers.forEach(function (buff) {
+						strings.push(buff.slice(4).toString().toLowerCase());
+					});
+					if (strings.indexOf(buffer.slice(4).toString().toLowerCase()) !== -1) {
+						return null;
+					}
+				}
 			}
 			Object.keys(arg).forEach(function (key) {
 				var value = arg[key];

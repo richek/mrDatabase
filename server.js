@@ -12,8 +12,9 @@ var dbFile = require('./dbFile');
 require('./Object');
 
 var options = {
-	port: 8888,
-	https: false
+	httpPort: 8888,
+	httpsPort: 8889,
+	secure: false
 };
 
 var httpsOptions = {
@@ -31,38 +32,61 @@ process.on('SIGTERM', function () {
 	dbClose();
 });
 
-function dbClose() {
-	var dbNames = Object.keys(dbInfo);
-	var count = dbNames.length;
-	dbNames.forEach(function (dbName) {
-		dbInfo[dbName].dbFile.close(function () {
-			if (--count === 0) {
-				console.log('memory =>', process.memoryUsage());
-				process.exit();
-			}
-		});
+var dbInfo;
+dbOpen();
+
+function dbOpen() {
+	dbFile.init(function (info) {
+		dbInfo = info;
+		if (Object.keys(dbInfo).length === 0) {
+			console.log('no databases found');
+		}
+		createServer();
 	});
 }
 
-var dbInfo;
-dbFile.init(function (info) {
-	dbInfo = info;
-	if (dbInfo === {}) {
-		console.log('no databases found');
+function dbClose() {
+	var dbNames = Object.keys(dbInfo);
+	var count = dbNames.length;
+	if (count === 0) {
+		exit();
+	}
+	dbNames.forEach(function (dbName) {
+		dbInfo[dbName].dbFile.close(function () {
+			if (--count === 0) {
+				exit();
+			}
+		});
+	});
+
+	function exit() {
+		console.log('memory =>', process.memoryUsage());
 		process.exit();
 	}
-	createServer();
-});
+}
 
 function createServer() {
-	if (options.https) {
-		var server = https.createServer(httpsOptions, listener);
-	} else {
-		server = http.createServer(listener);
-	}
-	server.listen(options.port, function () {
-		console.log('server is listening at port:', options.port);
+	http.createServer(function (request, response) {
+		if (options.secure) {
+			redirect(request, response);
+		} else {
+			listener(request, response);
+		}
+	}).listen(options.httpPort, function () {
+		console.log('http server is listening at port:', options.httpPort);
 	});
+	https.createServer(httpsOptions, listener)
+		.listen(options.httpsPort, function () {
+			console.log('https server is listening at port:', options.httpsPort);
+		});
+
+	function redirect(request, response) {
+		var https = 'https://' + request.connection.localAddress
+			+ ':' + options.httpsPort + '/';
+		response.writeHead(301, {'Location': https});
+		response.end();
+	}
+
 	function listener(request, response) {
 		var path = url.parse(request.url).pathname;
 		if (path === '/ajax' || path === '/cli') {
@@ -72,7 +96,7 @@ function createServer() {
 			});
 			request.on('end', function() {
 				response.writeHead(200, {'Content-Type': 'text/plain'});
-				if (options.https && path === '/cli' && !request.socket.authorized) {
+				if (path === '/cli' && !request.socket.authorized) {
 					response.end(JSON.stringify(['ERROR: client is not authorized']));
 				} else {
 					execute(JSON.parse(data), function (result) {
@@ -110,7 +134,7 @@ function execute(object, callback) {
 		args = [args];
 	}
 	if (log) {
-		console.log(options.port + ':', cmd, '(' + dbName + ') =>', args);
+		console.log(cmd, '(' + dbName + ') =>', args);
 	}
 	if ((cmd === 'get' || cmd === 'put' || cmd === 'remmove' || cmd === 'dump')
 		&& (!dbName || !dbInfo[dbName])) {

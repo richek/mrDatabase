@@ -2,26 +2,13 @@
 'use strict';
 
 var fs = require('fs');
-var http = require('http');
 var https = require('https');
-
-var options = {
-	https: false
-}
-
-var httpOptions = {
-	hostname: 'localhost',
-	port: 8888,
-	path: '/cli',
-	method: 'POST'
-};
 
 var httpsOptions = {
 	pfx: fs.readFileSync('./Certs/admin.pfx'),
 	ca: fs.readFileSync('./Certs/root.pem'),
-	rejectUnauthorized: true,
 	hostname: 'localhost',
-	port: 8888,
+	port: 8889,
 	path: '/cli',
 	method: 'POST'
 };
@@ -76,13 +63,8 @@ function send(object, callback) {
 	if (cmd === 'export') {
 		object.cmd = 'dump';
 	}
-	var data = '';
-	if (options.https) {
-		var request = https.request(httpsOptions, listener);
-	} else {
-		request = http.request(httpOptions, listener);
-	}
-	function listener(response) {
+	var request = https.request(httpsOptions, function (response) {
+		var data = '';
 		response.on('data', function (chunk) {
 			data += chunk;
 		});
@@ -96,7 +78,7 @@ function send(object, callback) {
 			}
 			callback(parsed);
 		});
-	};
+	});
 	request.end(JSON.stringify(object));
 }
 
