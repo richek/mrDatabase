@@ -133,6 +133,18 @@ function execute(object, callback) {
 	if (!Array.isArray(args)) {
 		args = [args];
 	}
+	for (var argn = 0; argn < args.length; ++argn) {
+		if (typeof args[argn] === 'object') {
+			var object = {};
+			for (var key in args[argn]) {
+				if (args[argn].hasOwnProperty(key)) {
+					var value = args[argn][key];
+					object[String(key)] = String(value);
+				}
+			}
+			args[argn] = object;
+		}
+	}
 	if (log) {
 		console.log(cmd, '(' + dbName + ') =>', args);
 	}

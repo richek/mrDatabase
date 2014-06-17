@@ -59,7 +59,6 @@ In any configuration, the following files must be in the same directory as serve
 	* Cert/root.pem
 	* dbFile.js
 	* dbIndex.js
-	* fuzzy.js
 	* index.css
 	* index.html
 	* index.js
@@ -85,7 +84,7 @@ To shut down the server:
 
 ### Case and Fuzzy Match
 
- Internally, the server converts commands, search and index keys, and values to lower case. Thus, all are functionally case insensitive. Keys and values in objects themselves are not modified.
+ Internally, the server converts commands, keys, and values to strings. It converts search and index keys and values to lower case. Thus, all are functionally case insensitive. Keys and values in objects themselves are not converted to lower case.
 
 Internally, the objects {Lastname:Smith}, {lastname:Smith}, {LASTNAME:SMITH}, and {lastname:smith} are all the same object. However, the object {lastname:smith} is __not__ the same as the object {lastname:smith, firstname:john}.
 

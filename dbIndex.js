@@ -5,7 +5,6 @@
 
 	module.exports = dbIndex;
 
-	var fuzzy = require('./fuzzy');
 	require('./Object');
 
 	function dbIndex() {
@@ -20,6 +19,12 @@
 				var buffer = arg;
 				arg = buffer.slice(4).toObject();
 			} else {
+				Object.keys(arg).forEach(function (key) {
+					var value = arg[key];
+					if (value.slice(-1) === '_') {
+						arg[key] = value.slice(0, -1);
+					}
+				});
 				var argbuff = arg.toBuffer();
 				buffer = new Buffer(argbuff.length + 4);
 				buffer.writeInt32LE(0, 0);
@@ -37,15 +42,8 @@
 			}
 			Object.keys(arg).forEach(function (key) {
 				var value = arg[key];
-				if (typeof key === 'string') {
-					key = key.toLowerCase();
-				}
-				if (typeof value === 'string') {
-					if (value.slice(-1) === '_') {
-						value = value.slice(0, -1);
-					}
-					value = value.toLowerCase();
-				}
+				key = key.toLowerCase();
+				value = value.toLowerCase();
 				if (key in db && value in db[key]) {
 					db[key][value].push(buffer);
 				} else {
@@ -68,11 +66,9 @@
 					var object = buffer.slice(4).toObject();
 					var buffstr = buffer.slice(4).toString().toLowerCase();
 					Object.keys(object).forEach(function (key) {
-						var lowerKey = typeof key === 'string' ?
-							key.toLowerCase() : key;
+						var lowerKey = key.toLowerCase();
 						var value = object[key];
-						var lowerValue = typeof value === 'string' ?
-							value.toLowerCase() : value;
+						var lowerValue = value.toLowerCase();
 						var strings = [];
 						db[lowerKey][lowerValue].forEach(function (buff) {
 							strings.push(buff.slice(4).toString().toLowerCase());
@@ -94,22 +90,21 @@
 			var strings = [];
 			var buffers = [];
 			Object.keys(arg).forEach(function (key, index) {
-				var lowerKey = typeof key === 'string' ?
-					key.toLowerCase() : key;
+				var lowerKey = key.toLowerCase();
 				var previous = strings;
 				strings = [];
 				buffers = [];
 				if (lowerKey in db) {
 					var value = arg[key];
-					if (typeof value === 'string' && value.slice(-1) === '_') {
-						var values = [value.slice(0, -1)];
+					if (value.slice(-1) === '_') {
+						arg[key] = value = value.slice(0, -1);
+						var values = [value];
 					} else {
-						values = fuzzy.filter(value, Object.keys(db[lowerKey]));
+						values = fuzzyFilter(value, Object.keys(db[lowerKey]));
 					}
 					if (values !== null) {
 						while ((value = values.shift()) !== undefined) {
-							var lowerValue = typeof value === 'string' ?
-								value.toLowerCase() : value;
+							var lowerValue = value.toLowerCase();
 							if (lowerValue in db[lowerKey]) {
 								db[lowerKey][lowerValue].forEach(function (buffer) {
 									var buffstr = buffer.slice(4).toString().toLowerCase();
@@ -141,6 +136,23 @@
 				});
 			});
 			return objects;
+		};
+
+		function fuzzyFilter(pattern, array) {
+			return array.filter(function (string) {
+				return match(pattern.toLowerCase(), string);
+			});
+
+			function match(pattern, string) {
+				string = string.toLowerCase();
+				var patternIndex = 0;
+				for (var index = 0; index < string.length; ++index) {
+					if (string[index] === pattern[patternIndex]) {
+						++patternIndex;
+					}
+				}
+				return patternIndex === pattern.length;
+			};
 		};
 	}
 

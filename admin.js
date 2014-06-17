@@ -140,8 +140,7 @@ function commands() {
 
 function getobj () {
 	var args = process.argv.slice(2);
-	var cmd = args.shift();
-	cmd = typeof cmd === 'string' && cmd.toLowerCase();
+	var cmd = String(args.shift()).toLowerCase();
 	var dbName = args.shift();
 	if (!dbName) {
 		dbName = null;
@@ -155,14 +154,6 @@ function getobj () {
 		args = args.replace(/([^{}\[\]:,]+)/g, '"$1"');
 		args = args.replace(/" /g, '"');
 		args = JSON.parse(args);
-		if (typeof args === 'object' && args !== null) {
-			Object.keys(args).forEach(function (key) {
-				var number = Number(args[key]);
-				if (!isNaN(number)) {
-					args[key] = number;
-				}
-			});
-		}
 	}
 	var cmdobj = {};
 	cmdobj.cmd = cmd;
@@ -238,7 +229,7 @@ function csvExport(cmdobj, callback) {
 		while ((object = objects.shift()) !== undefined) {
 			var values = [];
 			Object.keys(object).forEach(function (key) {
-				var lowerKey = typeof key === 'string' ? key.toLowerCase() : key;
+				var lowerKey = String(key).toLowerCase();
 				values[keys.indexOf(lowerKey)] = object[key];
 			});
 			file += values.join('\t') + '\n';
