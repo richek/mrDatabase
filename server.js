@@ -1,8 +1,6 @@
 // server.js
 'use strict';
 
-var crypto = require('crypto');
-var exec = require('child_process').exec;
 var fs = require('fs');
 var http = require('http');
 var https = require('https');
@@ -14,8 +12,15 @@ require('./Object');
 var options = {
 	httpPort: 8888,
 	httpsPort: 8889,
-	secure: false
+	secure: true
 };
+
+if (process.argv[2] === 'open') {
+	options.secure = false;
+} else if (process.argv[2] === 'secure') {
+	options.secure = true;
+}
+console.log('options =', options);
 
 var httpsOptions = {
 	pfx: fs.readFileSync('./Certs/server.pfx'),
@@ -148,7 +153,7 @@ function execute(object, callback) {
 	if (log) {
 		console.log(cmd, '(' + dbName + ') =>', args);
 	}
-	if ((cmd === 'get' || cmd === 'put' || cmd === 'remmove' || cmd === 'dump')
+	if ((cmd === 'get' || cmd === 'put' || cmd === 'remove' || cmd === 'dump')
 		&& (!dbName || !dbInfo[dbName])) {
 		callback(['ERROR: database name is missing or invalid']);
 		return;
@@ -168,7 +173,7 @@ function execute(object, callback) {
 		callback(remove(dbName, args));
 		break;
 	case 'create':
-		exec('touch ' + dbName + '.mrdb', function () {
+		dbFile.touch(dbName, function () {
 			callback('created ' + dbName);
 		});
 		break;

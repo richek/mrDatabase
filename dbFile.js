@@ -4,6 +4,7 @@
 (function () {
 
 	module.exports.init = init;
+	module.exports.touch = touch;
 
 	var crypto = require('crypto');
 	var fs = require('fs');
@@ -44,6 +45,26 @@
 			}
 			if (pending === 0) {
 				callback(dbInfo);
+			}
+		});
+	}
+
+	function touch(dbName, callback) {
+		var filename = dbName + '.mrdb';
+		fs.open(filename, 'r', function (error, fd) {
+			if (error) {
+				fs.open(filename, 'w', function (error, fd) {
+					if (error) {
+						console.log(error);
+						callback();
+					} else {
+						fs.close(fd);
+						callback();
+					}
+				});
+			} else {
+				fs.close(fd);
+				callback();
 			}
 		});
 	}

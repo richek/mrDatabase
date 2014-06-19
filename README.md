@@ -1,8 +1,12 @@
 # mrDatabase™ 
 
-A client/server database system for JSON objects (key:value pairs).
+A __Nodejs__-based client/server database system for JSON objects (key:value pairs).
 
 ## Features
+
+	* Server and admin client use __Nodejs__ + __Javascript__.
+
+	* Browser client uses __Javascript__ + __jQuery__.
 
 	* Browser client for users.
 
@@ -15,10 +19,6 @@ A client/server database system for JSON objects (key:value pairs).
 	* Automatic deleted object space recovery.
 
 	* Client interfaces optionally encrypted with HTTPS.
-
-	* Browser client uses Javascript + jQuery.
-
-	* Server and admin client use Nodejs + Javascript.
 
 	* Asynchronous server I/O for high performance and scalability.
 
@@ -34,13 +34,13 @@ As configured in the download package, the admin client runs on the same system 
 
 ### HTTP and HTTPS
 
-By default, the download package is configured to use HTTP. This enables testing and demonstration without requiring SSL certificates for browser clients. At the top of server.js is an options object containing "secure: false". Change "false" to "true" to switch to HTTPS. The Cert directory contains test/demo certificates for HTTPS, but the root certificate being self-signed may cause problems with browsers.
+By default, the download package is configured to use HTTPS. The Cert directory contains test/demo certificates for HTTPS, but the root certificate being self-signed may cause problems with browser clients. At the top of server.js is an options object containing "secure: true". Change "true" to "false" to switch to HTTP. This enables testing and demonstration without requiring SSL certificates for browser clients.
 
-__Note:__ The admin client always uses HTTPS for security purposes.
+You can start the server with a single optional command line argument, "open" or "secure", to force "options.secure: false" or "options.secure: true", respectively. Otherwise, the server starts with its default, "options.secure: true".
 
 As configured, the server uses port 8888 for HTTP, and port 8889 for HTTPS. When running in secure mode, browsers addressing the HTTP port will automatically be redirected to the HTTPS port. The admin client always uses the HTTPS port.
 
-The options object at the top of server.js configures the ports for HTTP and HTTPS. The httpsOptions object at the top of admin.js configures its HTTPS port. You can change these configuration ports, but the admin client's httpsOptions.port must be identical to the server's options.HTTPS port.
+The options object at the top of server.js configures the default secure mode, and the ports for HTTP and HTTPS. The httpsOptions object at the top of admin.js configures its HTTPS port. You can change these configuration ports, but the admin client's httpsOptions.port must be identical to the server's options.HTTPS port.
 
 ### SSL Certificates
 
@@ -71,7 +71,7 @@ To start the server:
 	node server					# server uses ports 8888 and 8889
 ```
 
-__Note:__ You can change the options object near the top of server.js to specify different ports. If you change the HTTPS port, be sure to change httpsOptions.port near the top of admin.js to the identical port.
+__Note:__ By default, the server starts with "options.secure: true". An optional single command line argument, "open" or "secure", overrides the default, forcing "options.secure: false" or "options.secure: true", respectively. You can change the options object near the top of server.js to specify a different default for "options:secure:", and different ports. If you change the HTTPS port, be sure to change httpsOptions.port near the top of admin.js to the identical port.
 
 	* Databases are files with filename extensions = ".mrdb".
 	* The server automatically opens all the databases it finds in its own directory.
@@ -194,7 +194,7 @@ These commands are available only in the admin client.
 
 #### create
 
-This command creates a new empty database and executes a "rescan" command. If applied to an existing database, it has no effect except changing the database file timestamp.
+This command creates a new empty database and executes a "rescan" command. It has no effect on an existing database.
 
 #### import
 
