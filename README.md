@@ -4,9 +4,9 @@ A __Nodejs__-based client/server database system for JSON objects (key:value pai
 
 ## Features
 
-	* Server and admin client use __Nodejs__ + __Javascript__.
+	* Server and admin client use Nodejs + Javascript.
 
-	* Browser client uses __Javascript__ + __jQuery__.
+	* Browser client uses Javascript + jQuery.
 
 	* Browser client for users.
 
