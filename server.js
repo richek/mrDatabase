@@ -28,9 +28,18 @@ var httpsOptions = {
 	requestCert: true
 };
 
+if (process.platform === 'win32') {
+    require('readline').createInterface({
+        input: process.stdin,
+        output: process.stdout
+    }).on('SIGINT', function () {
+		dbClose();
+    });
+}
+
 process.on('SIGINT', function () {
 	console.log();
-	process.kill(process.pid);
+	dbClose();
 });
 
 process.on('SIGTERM', function () {
@@ -197,7 +206,7 @@ function execute(object, callback) {
 		});
 		break;
 	case 'shutdown':
-		process.kill(process.pid);
+		dbClose();
 		callback('shutting down...');
 		break;
 	}
