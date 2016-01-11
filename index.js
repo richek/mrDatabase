@@ -7,6 +7,9 @@ $(function () {
 	var dbName;
 	var labelRowCount;
 
+	var checkedChar = String.fromCharCode(0x2611);
+	var uncheckedChar = String.fromCharCode(0x25fb);
+
 	$('#pairs, #submit, #objects, #response').hide();
 	$.ajax({
 		url: '/ajax',
@@ -39,10 +42,7 @@ $(function () {
 
 	$('#dbInfo').change(function () {
 		$('#pairs, #submit, #objects, #response').hide();
-		$('tbody.pairs tr').remove();
-		$('#count').remove();
-		$('tbody.objects tr').remove();
-		$('tbody.response tr').remove();
+		$('tbody.pairs tr, tbody.objects tr, #count, tbody.response tr').remove();
 		if ($(this).get(0).selectedIndex !== 0) {
 			dbName = $(this).get(0).value;
 			if (dbInfo[dbName].readOnly) {
@@ -59,7 +59,7 @@ $(function () {
 			var row = $('tbody.pairs').get(0).insertRow(-1);
 			$(row).append('<td class="right"><label>' + key + '</label>:</td>'
 						  + '<td><input type="text" size="20"></td>'
-						  + '<td><input type="checkbox"></td>');
+						  + '<td><input type="checkbox" class="checkbox"></td>');
 		});
 		labelRowCount = $('tbody.pairs tr').length;
 		dynamicTable();
@@ -89,24 +89,32 @@ $(function () {
 		}
 	});
 
-	$('#submit').click(function () {
-		var object = {};
-		$('tbody.pairs tr').each(function (index, row) {
-			if (index < labelRowCount) {
-				var key = $(row).find('label').eq(0).text();
-				var value = $(row).find('input').eq(0).val().trim();
-				var exact = $(row).find('input').get(1).checked;
+	$('tbody.pairs').focusout(function (event) {
+		if (!$(event.target).hasClass('checkbox')) {
+			var content = $(event.target).val().replace(/[  ]+/g, ' ').trim();
+			if ($(event.target).hasClass('right')) {
+				$(event.target).val(content.toLowerCase());
 			} else {
-				key = $(row).find('input').eq(0).val().trim();
-				value = $(row).find('input').eq(1).val().trim();
-				exact = $(row).find('input').get(2).checked;
+				$(event.target).val(content);
 			}
-			if (key && value) {
-				if (exact) {
-					value = value + '_';
-				}
-				object[key] = value;
+		}
+	});
+
+	$('#submit').click(function () {
+		var obj = {};
+		$('tbody.pairs tr').each(function (index, row) {
+			var key = index < labelRowCount
+				? $(row).find('label').eq(0).text().trim()
+				: $(row).find('input[type="text"]').eq(0).val();
+			var value = $(row).find('input[type="text"]').eq(-1).val();
+			var exact = $(row).find('input[type="checkbox"]').get(0).checked;
+			if (key !== '' && value !== '') {
+				obj[key] = value + (exact ? checkedChar : uncheckedChar);
 			}
+		});
+		var object = {};
+		Object.keys(obj).sort().forEach(function (key) {
+			object[key] = obj[key];
 		});
 		var row = $('tbody.objects').get(0).insertRow(-1);
 		$(row).append('<td><button type="button" class="edit">Edit</button></td>'
@@ -118,62 +126,55 @@ $(function () {
 	});
 
 	$('tbody.objects').eq(0).click(function (event) {
-		if ($(event.target).hasClass('edit')) {
-			edit(event);
+		if ($(event.target).hasClass('edit')
+			|| $(event.target).hasClass('clear')) {
+			if ($(event.target).hasClass('edit')) {
+				edit(event);
+			}
+			$(event.target).closest('tr').remove();
+			if ($('tbody.objects tr').length === 0) {
+				$('#objects, #response').hide();
+				$('#count, tbody.response tr').remove();
+			}
+			$('tbody.pairs input[type="text"]').eq(0).focus().get(0).select();
 		}
-		$(event.target).closest('tr').remove();
-		if ($('tbody.objects tr').length === 0) {
-			$('#objects').hide();
-			$('#response').hide();
-			$('#count').remove();
-			$('tbody.response tr').remove();
+
+		function edit(event) {
+			var object = JSON.parse($(event.target).closest('tr')
+									.find('td').eq(1).text());
+			var keys = [];
+			$('tbody.pairs tr').each(function (index, row) {
+				if (index < labelRowCount) {
+					keys.push($(row).find('label').eq(0).text().trim());
+					$(row).find('input').eq(0).val('');
+					$(row).find('input').get(1).checked = false;
+				} else {
+					$(row).remove();
+				}
+			});
+			Object.keys(object).forEach(function (key) {
+				var value = object[key];
+				var nrow = keys.indexOf(key);
+				if (nrow === -1) {
+					var row = newRow();
+					$(row).find('input[type="text"]').eq(0).val(key);
+				} else {
+					row = $('tbody.pairs tr').eq(nrow);
+				}
+				$(row).find('input[type="text"]').eq(-1).val(value.slice(0, -1));
+				$(row).find('input[type="checkbox"]').get(0).checked =
+					value.substr(-1) === checkedChar;
+			});
+			if (!dbInfo[dbName].readOnly) {
+				newRow();
+			}
+			setTabIndex();
 		}
-		$('tbody.pairs input[type="text"]').eq(0).focus().get(0).select();
 	});
 
-	function edit(event) {
-		var object = JSON.parse($(event.target).closest('tr')
-								.find('td').eq(1).text());
-		var keys = [];
-		$('tbody.pairs tr').each(function (index, row) {
-			if (index < labelRowCount) {
-				keys.push($(row).find('label').eq(0).text());
-				$(row).find('input').eq(0).val('');
-				$(row).find('input').get(1).checked = false;
-			} else {
-				$(row).remove();
-			}
-		});
-		Object.keys(object).forEach(function (key) {
-			var value = object[key];
-			var nrow = keys.indexOf(key);
-			if (nrow === -1) {
-				var row = newRow();
-				$(row).find('input').eq(0).val(key);
-				if (value.slice(-1) === '_') {
-					$(row).find('input').get(2).checked = true;
-					value = value.slice(0, -1);
-				}
-				$(row).find('input').eq(1).val(value);
- 			} else {
-				row = $('tbody.pairs tr').eq(nrow);
-				if (value.slice(-1) === '_') {
-					$(row).find('input').get(1).checked = true;
-					value = value.slice(0, -1);
-				}
-				$(row).find('input').eq(0).val(value);
-			}
-		});
-		if (!dbInfo[dbName].readOnly) {
-			newRow();
-		}
-		setTabIndex();
-	}
-
 	$('#clear').click(function () {
-		$('#count').remove();
-		$('tbody.response tr').remove();
 		$('#response').hide();
+		$('#count, tbody.response tr').remove();
 		$('tbody.pairs input[type="text"]').eq(0).focus().get(0).select();
 	});
 
@@ -190,11 +191,19 @@ $(function () {
 	});
 
 	function send(cmd) {
-		$('#count').remove();
-		$('tbody.response tr').remove();
+		$('#count, tbody.response tr').remove();
 		var array = [];
 		$('tbody.objects tr').each(function () {
-			array.push(JSON.parse($(this).children('td').eq(1).text()));
+			var obj = JSON.parse($(this).children('td').eq(1).text());
+			Object.keys(obj).forEach(function (key) {
+				if (cmd === 'put') {
+					var exact = '';
+				} else {
+					exact = obj[key].substr(-1) === checkedChar ? '=' : '~';
+				}
+				obj[key] = obj[key].slice(0, -1) + exact;
+			});
+			array.push(obj);
 		});
 		var object = {};
 		object.cmd = cmd;
@@ -213,7 +222,7 @@ $(function () {
 				.append('<tr id="count"><th>' + count + ' object'
 						+ (count === 1 ? '' : 's') + '</th></tr>')
 			var object;
-			while ((object = array.shift()) !== undefined) {
+			while (object = array.shift()) {
 				var row = $('tbody.response').get(0).insertRow(-1);
 				$(row).append('<td>' + JSON.stringify(object) + '</td>');
 			}
@@ -231,13 +240,10 @@ $(function () {
 			var current = $(document.activeElement).attr('tabIndex') - 1;
 			for (var nrow = labelRowCount; nrow < $(rows).length; ++nrow) {
 				var row = $(rows).eq(nrow);
-				var emptyCount = 0;
-				for (var col = 0; col < 2; ++col) {
-					if ($(row).find('input').eq(col).val().trim() === '') {
-						++emptyCount;
-					}
-				}
-				if (emptyCount === 2) {
+				var inputs = $(row).find('input');
+				if ($(inputs).eq(0).val().trim() === ''
+					&& $(inputs).eq(-2).val().trim() === ''
+					&& !$(inputs).get(-1).checked) {
 					$(row).remove();
 				}
 			}
@@ -251,21 +257,23 @@ $(function () {
 		var row = $('tbody.pairs').get(0).insertRow(-1);
 		$(row).append('<td><input type="text" size="10" class="right">:</td>'
 					  + '<td><input type="text" size="20"></td>'
-					  + '<td><input type="checkbox"></td>');
+					  + '<td><input type="checkbox" class="checkbox"></td>');
 		return row;
 	}
 
 	function setTabIndex() {
 		$('#submit').hide();
+		$('tbody.pairs tr').each(function () {
+			var inputs = $(this).find('input[type="text"]');
+			if ($(inputs).eq(-1).val().trim() !== ''
+				&& (($(inputs)).length === 1
+					|| $(inputs).eq(0).val().trim() !== '')) {
+				$('#submit').show();
+			}
+		});
 		var tabIndex = 0;
-		$('tbody.pairs tr').each(function (rowIndex) {
-			var need = rowIndex < labelRowCount ? 1 : 2;
-			$(this).find('input[type="text"]').each(function (inputIndex) {
-				$(this).attr('tabIndex', ++tabIndex);
-				if ($(this).val().trim() !== '' && --need === 0) {
-					$('#submit').show();
-				}
-			});
+		$('tbody.pairs input[type="text"]').each(function () {
+			$(this).attr('tabIndex', ++tabIndex);
 		});
 	}
 

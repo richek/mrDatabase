@@ -1,4 +1,5 @@
-The MIT License (MIT)
+The Modified MIT License (MIT)
+License to sell removed.
 
 Copyright (c) 2014 Martin D. Richek, Inc.
 

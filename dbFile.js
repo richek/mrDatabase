@@ -6,19 +6,15 @@
 	module.exports.init = init;
 	module.exports.touch = touch;
 
-	var crypto = require('crypto');
 	var fs = require('fs');
 
 	var dbIndex = require('./dbIndex');
 	require('./Object');
 
-	var cipherType = 'aes-256-cbc';
-	var password = 'HC3hy($sh#)aS81^-2!^!+DZUu5+?w>^JGs5K+!O15ciuSd5#gO^M>0@WH1OH)\?';
+	var dbInfo = {};
 
-	var dbInfo = [];
-
-	function init(callback) {
-		fs.readdir('.', function (error, files) {
+	function init(dbPath, callback) {
+		fs.readdir(dbPath, function (error, files) {
 			var dbNames = [];
 			files.forEach(function (fname) {
 				if (fname.slice(-5) === '.mrdb') {
@@ -28,7 +24,7 @@
 			});
 			var dbName;
 			var pending = 0;
-			while ((dbName = dbNames.shift()) !== undefined) {
+			while (dbName = dbNames.shift()) {
 				if (dbInfo[dbName]) {
 					dbInfo[dbName].dbKeys = dbInfo[dbName].dbIndex.getKeys();
 				} else {
@@ -146,15 +142,9 @@
 						}
 						get(pos + blocksize, callback);
 					} else {
-						blocksize = getBlocksize(size + 4);
-						var encrypted = new Buffer(size);
-						fs.read(fd, encrypted, 0, size, pos + 4, function () {
-							var decipher = crypto.createDecipher(cipherType, password);
-							decipher.end(encrypted);
-							var decrypted = decipher.read();
-							var buffer = new Buffer(decrypted.length + 4);
-							buffer.writeInt32LE(pos, 0);
-							decrypted.copy(buffer, 4);
+						var buffer = new Buffer(size + 4);
+						blocksize = getBlocksize(buffer.length);
+						fs.read(fd, buffer, 0, buffer.length, pos, function () {
 							dbInfo[dbName].dbIndex.put(buffer);
 							get(pos + blocksize, callback);
 						});
@@ -185,21 +175,15 @@
 		};
 			
 		function put(buffer) {
-			var cipher = crypto.createCipher(cipherType, password);
-			cipher.end(buffer.slice(4));
-			var encoded = cipher.read();
-			var size = encoded.length;
-			var fileBuffer = new Buffer(size + 4);
-			fileBuffer.writeInt32LE(size, 0);
-			encoded.copy(fileBuffer, 4);
-			var blocksize = getBlocksize(size + 4);
+			var size = buffer.length - 4;
+			buffer.writeInt32LE(size, 0);
+			var blocksize = getBlocksize(buffer.length);
 			var pos = getFree(blocksize);
 			var next = pos + blocksize;
 			if (eof < next) {
 				eof = next;
 			}
-			buffer.writeInt32LE(pos, 0);
-			fs.write(fd, fileBuffer, 0, fileBuffer.length, pos, function () {
+			fs.write(fd, buffer, 0, buffer.length, pos, function () {
 				fs.fsync(fd, function () {
 					shiftQueue();
 				});

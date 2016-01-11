@@ -4,11 +4,14 @@
 var fs = require('fs');
 var https = require('https');
 
+var options = {
+	certs: './Certs/'
+};
+
 var httpsOptions = {
-	pfx: fs.readFileSync('./Certs/admin.pfx'),
-	ca: fs.readFileSync('./Certs/root.pem'),
+	pfx: fs.readFileSync(options.certs + 'client.pfx'),
 	hostname: 'localhost',
-	port: 8889,
+	port: 8888,
 	path: '/cli',
 	method: 'POST'
 };
@@ -84,7 +87,6 @@ function send(object, callback) {
 
 function getcmd() {
 	var cmdobj = getobj();
-	var str = '';
 	switch (cmdobj.cmd) {
 	case 'get':
 	case 'put':
@@ -95,6 +97,14 @@ function getcmd() {
 			commands();
 			return null;
 		} else {
+			if (cmdobj.cmd !== 'put') {
+				Object.keys(cmdobj.args).forEach(function (key) {
+					var suffix = cmdobj.args[key].substr(-1);
+					if (suffix !== '=' && suffix !== '~') {
+						cmdobj.args[key] += '~';
+					}
+				});
+			}
 			return cmdobj;
 		}
 	case 'create':
@@ -118,48 +128,58 @@ function getcmd() {
 		commands();
 		return null;
 	}
-}
 
-function commands() {
-	var str = '\nCommands:\n';
-	str += "\n\tget <dbName> '<object>'";
-	str += "\n\tput <dbName> '<object>'";
-	str += "\n\tremove <dbName> '<object>'";
-	str += '\n\tcreate <dbName>';
-	str += '\n\timport <dbName>';
-	str += '\n\texport <dbName>';
-	str += '\n\tdump <dbName>';
-	str += '\n\tlog [true | false]';
-	str += '\n\tgetInfo';
-	str += '\n\trescan';
-	str += '\n\tshutdown\n';
-	console.log("\nUsage: node admin command [<dbName>]",
-				"['<object>' | true | false]");
-	console.log(str);
-}
+	function getobj () {
+		var args = process.argv.slice(2);
+		var cmd = String(args.shift()).toLowerCase();
+		var dbName = args.shift();
+		if (!dbName || !args) {
+			if (dbName) {
+				args.unshift(dbName);
+			}
+			dbName = null;
+		}
+		var object = {};
+		if (args) {
+			try {
+				args = JSON.parse(args);
+			} catch (error) {
+				args = {};
+			}
+			if (typeof args === 'object' && !Array.isArray(args)) {
+				var obj = {};
+				Object.keys(args).forEach(function (key) {
+					obj[key.trim().replace(/[  ]+/g, ' ').toLowerCase()] = args[key].trim();
+				});
+				Object.keys(obj).sort().forEach(function (key) {
+					object[key] = obj[key];
+				});
+			}
+		}
+		var cmdobj = {};
+		cmdobj.cmd = cmd;
+		cmdobj.dbName = dbName;
+		cmdobj.args = object;
+		return cmdobj;
+	}
 
-function getobj () {
-	var args = process.argv.slice(2);
-	var cmd = String(args.shift()).toLowerCase();
-	var dbName = args.shift();
-	if (!dbName) {
-		dbName = null;
-	} else if (!args) {
-		args.unshift(dbName);
-		dbName = null;
+	function commands() {
+		var str = '\nCommands:\n';
+		str += "\n\tget <dbName> '<object>'";
+		str += "\n\tput <dbName> '<object>'";
+		str += "\n\tremove <dbName> '<object>'";
+		str += '\n\tcreate <dbName>';
+		str += '\n\timport <dbName>';
+		str += '\n\texport <dbName>';
+		str += '\n\tdump <dbName>';
+		str += '\n\tlog [true | false]';
+		str += '\n\tgetInfo';
+		str += '\n\trescan';
+		str += '\n\tshutdown\n';
+		console.log("\nUsage: node admin command [<dbName>]",
+					"['<object>' | true | false]");
+		console.log(str);
 	}
-	if (Array.isArray(args) && args.length !== 0) {
-		args = args.toString();
-		args = args.replace(/[']/g, '');
-		args = args.replace(/([^{}\[\]:,]+)/g, '"$1"');
-		args = args.replace(/" /g, '"');
-		args = JSON.parse(args);
-	}
-	var cmdobj = {};
-	cmdobj.cmd = cmd;
-	cmdobj.dbName = dbName;
-	cmdobj.args = args;
-	return cmdobj;
 }
 
 function create(cmdobj, callback) {
@@ -194,7 +214,7 @@ function csvImport(cmdobj, callback) {
 
 	function sendData() {
 		var line = file.shift();
-		if (line === undefined) {
+		if (!line) {
 			callback(importCount);
 		}
 		var object = csvObject(line);
@@ -226,7 +246,7 @@ function csvExport(cmdobj, callback) {
 		var file = keys.join('\t') + '\n';
 		var exportCount = 0;
 		var object;
-		while ((object = objects.shift()) !== undefined) {
+		while (object = objects.shift()) {
 			var values = [];
 			Object.keys(object).forEach(function (key) {
 				var lowerKey = String(key).toLowerCase();

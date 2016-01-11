@@ -2,57 +2,53 @@
 'use strict';
 
 var fs = require('fs');
-var http = require('http');
 var https = require('https');
 var url = require('url');
 
 var dbFile = require('./dbFile');
+var dbIndex = require('./dbIndex');
 require('./Object');
 
 var options = {
-	httpPort: 8888,
-	httpsPort: 8889,
-	secure: true
+	httpsPort: 8888,
+	dbPath: './',
+	certs: './Certs/',
+	log: false
 };
-
-if (process.argv[2] === 'open') {
-	options.secure = false;
-} else if (process.argv[2] === 'secure') {
-	options.secure = true;
-}
-console.log('options =', options);
 
 var httpsOptions = {
-	pfx: fs.readFileSync('./Certs/server.pfx'),
-	ca: fs.readFileSync('./Certs/root.pem'),
-	requestCert: true
+	pfx: fs.readFileSync(options.certs + 'server.pfx'),
+	requestCert: true,
+	rejectUnauthorized: true
 };
 
-if (process.platform === 'win32') {
-    require('readline').createInterface({
-        input: process.stdin,
-        output: process.stdout
-    }).on('SIGINT', function () {
-		dbClose();
-    });
-}
+var dbInfo = {};
 
-process.on('SIGINT', function () {
-	console.log();
-	dbClose();
-});
-
-process.on('SIGTERM', function () {
-	dbClose();
-});
-
-var dbInfo;
+setTraps();
 dbOpen();
 
+function setTraps() {
+	if (process.platform === 'win32') {
+		require('readline').createInterface({
+			input: process.stdin,
+			output: process.stdout
+		}).on('SIGINT', function () {
+			dbClose();
+		});
+	}
+	process.on('SIGINT', function () {
+		console.log();
+		dbClose();
+	});
+	process.on('SIGTERM', function () {
+		dbClose();
+	});
+}
+
 function dbOpen() {
-	dbFile.init(function (info) {
+	dbFile.init(options.dbPath, function (info) {
 		dbInfo = info;
-		if (Object.keys(dbInfo).length === 0) {
+		if (dbInfo.length === 0) {
 			console.log('no databases found');
 		}
 		createServer();
@@ -80,28 +76,7 @@ function dbClose() {
 }
 
 function createServer() {
-	http.createServer(function (request, response) {
-		if (options.secure) {
-			redirect(request, response);
-		} else {
-			listener(request, response);
-		}
-	}).listen(options.httpPort, function () {
-		console.log('http server is listening at port:', options.httpPort);
-	});
-	https.createServer(httpsOptions, listener)
-		.listen(options.httpsPort, function () {
-			console.log('https server is listening at port:', options.httpsPort);
-		});
-
-	function redirect(request, response) {
-		var https = 'https://' + request.connection.localAddress
-			+ ':' + options.httpsPort + '/';
-		response.writeHead(301, {'Location': https});
-		response.end();
-	}
-
-	function listener(request, response) {
+	https.createServer(httpsOptions, function (request, response) {
 		var path = url.parse(request.url).pathname;
 		if (path === '/ajax' || path === '/cli') {
 			var data = '';
@@ -110,20 +85,16 @@ function createServer() {
 			});
 			request.on('end', function() {
 				response.writeHead(200, {'Content-Type': 'text/plain'});
-				if (path === '/cli' && !request.socket.authorized) {
-					response.end(JSON.stringify(['ERROR: client is not authorized']));
-				} else {
-					execute(JSON.parse(data), function (result) {
-						response.end(JSON.stringify(result));
-					});
-					data = '';
-				}
+				execute(JSON.parse(data), function (result) {
+					response.end(JSON.stringify(result));
+				});
+				data = '';
 			});
 		} else {
 			if (path === '' || path === '/') {
 				path = 'index.html';
-			} else if (path.substr(0, 1) === '/') {
-				path = path.substr(1);
+			} else if (path.charAt(0) === '/') {
+				path = path.slice(1);
 			}
 			var userAgent = request.headers['user-agent'].toLowerCase();
 			if (userAgent.indexOf('safari') === -1
@@ -135,84 +106,103 @@ function createServer() {
 				response.end(file);
 			});
 		}
-	}
+	}).listen(options.httpsPort, function () {
+		console.log('https server is listening at port:', options.httpsPort);
+	});
 }
 
-var log = false;
-
 function execute(object, callback) {
-	var cmd = object.cmd;
-	var dbName = object.dbName;
-	var args = object.args;
-	if (!Array.isArray(args)) {
-		args = [args];
+	if (typeof object !== 'object' || !object.cmd) {
+		callback(['ERROR: invalid command object']);
 	}
-	for (var argn = 0; argn < args.length; ++argn) {
-		if (typeof args[argn] === 'object') {
-			var object = {};
-			for (var key in args[argn]) {
-				if (args[argn].hasOwnProperty(key)) {
-					var value = args[argn][key];
-					object[String(key)] = String(value);
-				}
+	if (object.cmd === 'get' || object.cmd === 'put' || object.cmd === 'remove'
+		|| object.cmd === 'create' || object.cmd === 'dump') {
+		if (!object.dbName) {
+			callback(['ERROR: database name is missing']);
+		}
+		if (object.cmd !== 'create') {
+			if (!dbInfo[object.dbName]) {
+				callback(['ERROR: database name is invalid']);
 			}
-			args[argn] = object;
+			if (dbInfo[object.dbName].readOnly
+				&& (object.cmd === 'put' || object.cmd === 'remove')) {
+				callback(['ERROR: this database is read only']);
+			}
 		}
 	}
-	if (log) {
-		console.log(cmd, '(' + dbName + ') =>', args);
+	if (!Array.isArray(object.args)) {
+		object.args = [object.args];
 	}
-	if ((cmd === 'get' || cmd === 'put' || cmd === 'remove' || cmd === 'dump')
-		&& (!dbName || !dbInfo[dbName])) {
-		callback(['ERROR: database name is missing or invalid']);
-		return;
+	for (var argn = 0; argn < object.args.length; ++argn) {
+		if (typeof object.args[argn] === 'object') {
+			object.args[argn] = normalize(object.args[argn]);
+		}
 	}
-	if ((cmd === 'put' || cmd === 'remove') && dbInfo[dbName].readOnly) {
-		callback(['ERROR: this database is read only']);
-		return;
+	if (options.log) {
+		console.log(object);
 	}
-	switch (cmd) {
+	switch (object.cmd) {
 	case 'get':
-		callback(get(dbName, args));
+		callback(get(object.dbName, object.args));
 		break;
 	case 'put':
-		callback(put(dbName, args));
+		callback(put(object.dbName, object.args));
 		break;
 	case 'remove':
-		callback(remove(dbName, args));
+		callback(remove(object.dbName, object.args));
 		break;
 	case 'create':
-		dbFile.touch(dbName, function () {
-			callback('created ' + dbName);
+		dbFile.touch(object.dbName, function () {
+			callback(['created ' + object.dbName]);
 		});
 		break;
 	case 'dump':
-		callback(dump(dbName));
+		callback(dump(object.dbName));
 		break;
 	case 'log':
-		args = dbName;
-		if (args === 'true' || args === 'false') {
-			log = args;
+		if (object.dbName) {
+			object.dbName = object.dbName.toLowerCase();
+			options.log = object.dbName === 'true'
+				|| object.dbName === 'on'
+				|| object.dbName === 1;
 		}
-		callback(log);
+		callback([options.log]);
 		break;
 	case 'getinfo':
 		callback(getInfo());
 		break;
 	case 'rescan':
-		dbFile.init(function (info) {
+		dbFile.init(options.dbPath, function (info) {
 			dbInfo = info;
 			callback(getInfo());
 		});
 		break;
 	case 'shutdown':
 		dbClose();
-		callback('shutting down...');
+		callback(['shutting down...']);
 		break;
+	default:
+		callback(['ERROR: invalid command']);
+	}
+
+	function normalize(object) {
+		var tempObj = {};
+		Object.keys(object).forEach(function (key) {
+			tempObj[normKey(key)] = String(object[key]).trim().replace(/[  ]+/g, ' ');
+		});
+		object = {};
+		Object.keys(tempObj).sort().forEach(function (key) {
+			object[key] = tempObj[key];
+		});
+		return object;
+
+		function normKey(key) {
+			return key.trim().replace(/[  ]+/g, ' ').toLowerCase();
+		}
 	}
 }
 
-function getInfo(callback) {
+function getInfo() {
 	var info = {};
 	Object.keys(dbInfo).forEach(function (dbName) {
 		info[dbName] = {};
@@ -238,42 +228,22 @@ function put(dbName, array) {
 	return result;
 }
 
-function remove(dbName, array) {
+function get(dbName, array) {
 	var objects = [];
-	var strings = [];
-	var unsorted;
-	while ((unsorted = array.shift()) !== undefined) {
-		var removed = dbInfo[dbName].dbIndex.remove(unsorted);
-		if (removed !== null) {
-			removed.forEach(function (buffer) {
-				var buffstr = buffer.slice(4).toString().toLowerCase();
-				if (strings.indexOf(buffstr) === -1) {
-					objects.push(buffer.slice(4).toObject());
-					strings.push(buffstr);
-					dbInfo[dbName].dbFile.remove(buffer);
-				}
-			});
-		}
-	}
+	var gotbuffs = dbInfo[dbName].dbIndex.get(array);
+	gotbuffs.forEach(function (buffer) {
+		objects.push(buffer.slice(4).toObject());
+	});
 	return objects;
 }
 
-function get(dbName, array) {
+function remove(dbName, array) {
 	var objects = [];
-	var strings = [];
-	var unsorted;
-	while ((unsorted = array.shift()) !== undefined) {
-		var gotbuffs = dbInfo[dbName].dbIndex.get(unsorted);
-		if (gotbuffs !== null) {
-			gotbuffs.forEach(function (buffer) {
-				var buffstr = buffer.slice(4).toString().toLowerCase();
-				if (strings.indexOf(buffstr) === -1) {
-					objects.push(buffer.slice(4).toObject());
-					strings.push(buffstr);
-				}
-			});
-		}
-	}
+	var gotbuffs = dbInfo[dbName].dbIndex.remove(array);
+	gotbuffs.forEach(function (buffer) {
+		dbInfo[dbName].dbFile.remove(buffer);
+		objects.push(buffer.slice(4).toObject());
+	});
 	return objects;
 }
 
