@@ -2,7 +2,11 @@
 'use strict';
 
 var fs = require('fs');
-var https = require('https');
+
+// select http|https
+var http = require('http');
+// var https = require('https');
+
 var url = require('url');
 
 var dbFile = require('./dbFile');
@@ -10,17 +14,18 @@ var dbIndex = require('./dbIndex');
 require('./Object');
 
 var options = {
-	httpsPort: 8888,
+	port: 8888,
 	dbPath: './',
-	certs: './Certs/',
 	log: false
 };
 
-var httpsOptions = {
-	pfx: fs.readFileSync(options.certs + 'server.pfx'),
-	requestCert: true,
-	rejectUnauthorized: true
-};
+// httpsOptions only for https
+
+// var httpsOptions = {
+// 	pfx: fs.readFileSync('./Certs/server.pfx'),
+// 	requestCert: true,
+// 	rejectUnauthorized: true
+// };
 
 var dbInfo = {};
 
@@ -76,7 +81,9 @@ function dbClose() {
 }
 
 function createServer() {
-	https.createServer(httpsOptions, function (request, response) {
+	// select http|https
+	http.createServer(function (request, response) {
+	// https.createServer(httpsOptions, function (request, response) {
 		var path = url.parse(request.url).pathname;
 		if (path === '/ajax' || path === '/cli') {
 			var data = '';
@@ -96,18 +103,14 @@ function createServer() {
 			} else if (path.charAt(0) === '/') {
 				path = path.slice(1);
 			}
-			var userAgent = request.headers['user-agent'].toLowerCase();
-			if (userAgent.indexOf('safari') === -1
-				&& userAgent.indexOf('firefox') === -1
-				&& userAgent.indexOf('chrome') === -1) {
-				path = 'indexbad.html';
-			}
 			fs.readFile(path, function (error, file) {
 				response.end(file);
 			});
 		}
-	}).listen(options.httpsPort, function () {
-		console.log('https server is listening at port:', options.httpsPort);
+	}).listen(options.port, function () {
+		// select http|https
+		console.log('http server is listening at port:', options.port);
+		// console.log('https server is listening at port:', options.port);
 	});
 }
 

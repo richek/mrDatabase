@@ -2,14 +2,14 @@
 'use strict';
 
 var fs = require('fs');
-var https = require('https');
+
+// select http|https
+var http = require('http');
+// var https = require('https');
 
 var options = {
-	certs: './Certs/'
-};
-
-var httpsOptions = {
-	pfx: fs.readFileSync(options.certs + 'client.pfx'),
+	// pfx only for https
+	// pfx: fs.readFileSync('./Certs/client.pfx'),
 	hostname: 'localhost',
 	port: 8888,
 	path: '/cli',
@@ -66,7 +66,9 @@ function send(object, callback) {
 	if (cmd === 'export') {
 		object.cmd = 'dump';
 	}
-	var request = https.request(httpsOptions, function (response) {
+	// select http|https
+	var request = http.request(options, function (response) {
+	// var request = https.request(options, function (response) {
 		var data = '';
 		response.on('data', function (chunk) {
 			data += chunk;

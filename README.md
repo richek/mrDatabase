@@ -18,8 +18,6 @@ A __Nodejs__-based client/server database system for JSON objects (key:value pai
 
 	* Automatic deleted object space recovery.
 
-	* Client/Server communication encrypted with HTTPS.
-
 	* Asynchronous server I/O for high performance and scalability.
 
 	* Single server instance manages multiple databases.
@@ -32,21 +30,11 @@ A __Nodejs__-based client/server database system for JSON objects (key:value pai
 
 As configured in the download package, the admin and browser clients run on the same system as the server, using "localhost" as the domain name.
 
-### HTTPS
+### HTTP | HTTPS
 
-All communication between the server and clients uses HTTPS. The directory specified by **options.certs** contains demo certificates for HTTPS, but the root certificate being self-signed may cause browser clients to require the user to take responsibility for the "insecure" connection.
+The server and clients communicate using HTTP. There is code in the server and the admin client to use HTTPS, and SSL test certificates reside in the "Certs" directory. In the download package, that code is commented out.
 
-__Note:__ The **options.certs** values in the server and the admin client do not have to be the same. The server does not reference "client.pfx", and the admin client does not reference "server.pfx".
-
-The server listens at **options.httpsPort** (8888) for HTTPS connections.
-
-The **options** object at the top of server.js configures the port for HTTPS. The **httpsOptions** object at the top of admin.js configures its HTTPS port. If you change the port, make sure the admin client's **httpsOptions.port** is identical to the server's **options.httpsPort**.
-
-### SSL Certificates
-
-For production, replace the SSL certificates in the **options.certs** directory with certificates whose trust chain leads to a known Certificate Authority.
-
-The server certificate (server.pfx) must use the correct Fully Qualified Domain Name (FQDN) as the Common Name (CN), or it must appear as a Subject Alternative Name (SAN). The download package server certificate serves only the "localhost" domain.
+__Note:__ The SSL test certificates have a self-signed root, which makes some browsers complain that they cannot verify the certificate chain. Some--but not all--of these browsers offer a way around this problem.
 
 ### Server
 
@@ -58,16 +46,13 @@ In any configuration, the following files--or their links--must be in the same d
 	* index.css
 	* index.html
 	* index.js
-	* indexbad.html
-
-The "server.pfx" file--or its link--must be in the **options.certs** directory.
 
 The database files--or their links--must be in the **options.dbPath** directory.
 
 To start the server:
 
 ```bash
-	cd server_dir				# server_dir = server.js directory
+	cd server_dir				# directory containing the server files
 	node server
 ```
 * Databases are files--or links--with filename extensions = ".mrdb".
@@ -101,32 +86,22 @@ The fuzzy search algorithm is simple. Each and every character in the search cri
 
 ### Browser Client
 
-The download package root certificate is self-signed. The browser client most likely will complain that it cannot validate the connection. This is expected in the download package environment.
-
-To connect the browser to the server, use this URL (pppp = the **options.httpsPort** specified in the server):
+To connect the browser to the server, use this URL (pppp = the **options.port** specified in the server):
 
 	http://localhost:pppp
-
-__Note__: The browser must be the latest version of Safari, Firefox, or Chrome.
 
 The browser client cannot create a new database. That requires using the admin client.
 
 Any client can add objects with new keys to a read/write database.
 
-No clients can add objects to a read-only database.
+Clients cannot add objects to a read-only database.
 
 ### Admin Client
-
-In any configuration, the following file--or its link--must be in the directory specified by **options.certs**:
-
-	* client.pfx
-
-__Note:__ The admin client must refer to the correct server FQDN and port. You can change the **httpsOptions** object near the top of admin.js to refer to a different FQDN and/or port, as long as they match the server's.
 
 To see usage information and a list of available commands for the admin client:
 
 ```bash
-	cd admin_dir				# admin_dir = admin.js location
+	cd admin_dir				# directory containing the admin file
 	node admin
 ```
 
